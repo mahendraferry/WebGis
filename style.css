@@ -210,3 +210,30 @@ body, html {
     font-size: 18px;
   }
 }
+@media (max-width: 768px) {
+  #sidebar {
+    position: static !important;
+    width: 95% !important;
+    margin: 10px auto !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+
+  #searchContainer {
+    position: static !important;
+    transform: none !important;
+    margin: 10px auto;
+    width: 90%;
+  }
+
+  #map {
+    height: 60vh !important;
+  }
+
+  .edit-button {
+    top: 10px !important;
+    right: 10px !important;
+    position: fixed !important;
+  }
+}
