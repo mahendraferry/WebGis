@@ -199,16 +199,6 @@ body, html {
 }
 
 /* ====== Responsive ====== */
-@media (max-width: 768px) {
-  #sidebar {
-    width: 90%;
-    left: 5%;
-    max-height: 50vh;
-    font-size: 13px;
-  }
-  #navbar {
-    font-size: 18px;
-  }
 }
 @media (max-width: 768px) {
   #sidebar {
