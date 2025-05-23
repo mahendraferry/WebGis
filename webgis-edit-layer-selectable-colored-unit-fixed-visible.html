@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Dashboard GIS PERUMDA Air Minum Kabupaten Ngawi Tirto Kertonegoro</title>
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+<style>
+    body, html {
+      margin: 0; padding: 0; height: 100%; font-family: sans-serif;
+      display: flex; flex-direction: column;
+    }
+    /* Navbar Tabs */
+    #tabs {
+      display: flex;
+      background: #007bff;
+      color: white;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+      user-select: none;
+    }
+    #tabs li {
+      flex: 1;
+      text-align: center;
+      padding: 12px 0;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: background-color 0.3s, border-bottom-color 0.3s;
+    }
+    #tabs li:hover {
+      background-color: #0056b3;
+    }
+    #tabs li.active {
+      border-bottom-color: #ffc107;
+      background-color: #0056b3;
+      font-weight: bold;
+    }
+
+    /* Konten tiap tab */
+    .tab-content {
+      display: none;
+      flex: 1;
+      overflow: auto;
+      padding: 10px;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Peta penuh di tab Web GIS */
+    #map {
+      height: 80vh;
+      width: 100%;
+    }
+
+    /* Sidebar filter di tab Web GIS */
+    #sidebar {
+      position: absolute;
+      top: 110px; /* dibawah navbar */
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      width: 220px;
+      max-height: 70vh;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+
+    /* Pencarian di Web GIS */
+    #searchContainer {
+      position: absolute;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1001;
+      background: white;
+      padding: 5px 8px;
+      border-radius: 5px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    #searchInput {
+      width: 250px;
+      padding: 5px;
+      font-size: 14px;
+    }
+    #searchBtn {
+      padding: 6px 12px;
+      background: #007bff;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 3px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    #searchBtn:hover {
+      background: #0056b3;
+    }
+
+    /* Logo PERUMDA */
+    #logoPerumda {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      width: 90px;
+      opacity: 0.95;
+      z-index: 1100;
+      pointer-events: none;
+      filter: drop-shadow(1px 1px 3px rgba(0,0,0,0.7));
+    }
+
+    /* Konten Home, Statistik, Edit - sederhana */
+    #homeContent, #statistikContent, #editContent {
+      padding: 20px;
+      font-size: 16px;
+    }
+  </style>
+<style>
+#sidebar {
+  position: absolute;
+  top: 100px;
+  left: 10px;
+  z-index: 1000;
+  background: rgba(255,255,255,0.95);
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  width: 250px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+#sidebar h4 {
+  margin-top: 0;
+  font-size: 16px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 5px;
+}
+.legend-section {
+  margin-top: 12px;
+}
+.legend-section h5 {
+  margin: 8px 0 4px;
+  font-size: 15px;
+  color: #333;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-top: 6px;
+}
+.symbol {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  border-radius: 3px;
+  border: 1px solid #666;
+}
+.symbol.pipe {
+  background: #007bff;
+  border-width: 2px;
+}
+.symbol.pelanggan {
+  background: #28a745;
+}
+.symbol.valve {
+  background: #ff0000;
+}
+</style>
+<style>
+.edit-button {
+  position: absolute;
+  top: 60px;
+  right: 10px;
+  z-index: 1100;
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+</style>
+<style>
+.edit-button {
+  position: absolute;
+  top: 60px;
+  right: 10px;
+  z-index: 1100;
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#editOptions {
+  position: absolute;
+  top: 110px;
+  right: 10px;
+  z-index: 1100;
+  background: #fff;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  font-size: 14px;
+  display: none;
+}
+</style></head>
+<body>
+<div id="editOptions">
+<strong>Edit Layer:</strong><br/>
+<label><input id="editPipa" type="checkbox"/> Pipa</label><br/>
+<label><input id="editPelanggan" type="checkbox"/> Pelanggan</label><br/>
+<label><input id="editValve" type="checkbox"/> Valve</label><br/>
+<button onclick="startEdit()">Lanjutkan Edit</button>
+</div>
+
+<ul id="tabs">
+<li class="active" data-tab="home">Home</li>
+<li data-tab="webgis">Web GIS</li>
+<li data-tab="statistik">Statistik</li>
+<li data-tab="edit">Edit &amp; Tambah Layer</li>
+</ul>
+<!-- Konten tiap tab -->
+<div class="tab-content active" id="home">
+<h2>Selamat Datang di Dashboard PERUMDA Air Minum</h2>
+<p>Ini halaman Home dengan informasi ringkas, pengantar, atau berita penting.</p>
+</div>
+<div class="tab-content" id="webgis"><button class="edit-button" id="toggleEdit">🖉 Edit Layer</button>
+<div id="sidebar">
+<div class="filter-group">
+  <label for="filterUnit"><b>Filter Unit / IKK:</b></label>
+  <select id="filterUnit" onchange="filterUnit()">
+    <option value="">Semua</option>
+  </select>
+</div>
+
+<h4>Filter &amp; Legenda</h4>
+<div class="legend-section">
+<h5>Jaringan Pipa</h5>
+<label><input checked="" id="chkPipa" type="checkbox"/> Tampilkan</label>
+<select id="filterPipa">
+<option value="">Semua Diameter</option>
+</select>
+<div class="legend-item">
+<span class="symbol pipe"></span><span>Jaringan Pipa</span>
+</div>
+</div>
+<div class="legend-section">
+<h5>Pelanggan</h5>
+<label><input checked="" id="chkPelanggan" type="checkbox"/> Tampilkan</label>
+<select id="filterPelanggan">
+<option value="">Semua Golongan</option>
+</select>
+<div class="legend-item">
+<span class="symbol pelanggan"></span><span>Pelanggan</span>
+</div>
+</div>
+<div class="legend-section">
+<h5>Valve</h5>
+<label><input checked="" id="chkValve" type="checkbox"/> Tampilkan</label>
+<select id="filterValve">
+<option value="">Semua Diameter</option>
+</select>
+<div class="legend-item">
+<span class="symbol valve"></span><span>Valve</span>
+</div>
+</div>
+</div>
+<!-- Pencarian -->
+<div id="searchContainer">
+<input id="searchInput" placeholder="Cari Nama atau No Sambung" type="text"/>
+<button id="searchBtn">Cari</button>
+</div>
+<!-- Sidebar Filter -->
+<!-- Peta -->
+<div id="map"></div>
+<!-- Logo PERUMDA -->
+<img alt="Logo PERUMDA" id="logoPerumda" src="image/logo-perumda.png"/>
+</div>
+<div class="tab-content" id="statistik">
+<label for="statistikSelector" style="display:block; margin-top:20px; font-size:16px;"><strong>Pilih Jenis Statistik:</strong></label>
+<select id="statistikSelector" style="margin-top:10px; padding:5px; font-size:14px; display:block;">
+<option value="pelanggan_golongan">Pelanggan per Golongan</option>
+<option value="pelanggan_status">Pelanggan Aktif vs Non-Aktif</option>
+<option value="pipa_diameter">Panjang Pipa per Diameter</option>
+<option value="valve_jenis">Jumlah Valve per Jenis</option>
+</select>
+<canvas height="300" id="statistikChart" style="margin-top: 20px; max-width: 100%;" width="600"></canvas>
+</div>
+<div class="tab-content" id="edit">
+<h2>Edit &amp; Tambah Layer</h2>
+<p>Fitur untuk update data GIS seperti menambah jaringan pipa, pelanggan, atau valve.</p>
+<p><i>(Fitur ini perlu pengembangan backend &amp; database untuk simpan data secara online.)</i></p>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // Fungsi untuk pindah tab
+  const tabs = document.querySelectorAll('#tabs li');
+  const contents = document.querySelectorAll('.tab-content');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      const target = tab.getAttribute('data-tab');
+      contents.forEach(c => {
+        if (c.id === target) c.classList.add('active');
+        else c.classList.remove('active');
+      });
+
+      // Refresh peta jika tab Web GIS dipilih agar peta tampil sempurna
+      if(target === 'webgis') {
+        setTimeout(() => {
+          map.invalidateSize();
+        }, 300);
+      }
+    });
+  });
+
+  // Inisialisasi peta Leaflet (hanya saat halaman load)
+  const map = L.map('map').setView([-7.4506, 111.4417], 13);
+
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const googleSat = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains:['mt0','mt1','mt2','mt3'],
+    attribution: '&copy; Google Satellite'
+  });
+
+  let layerPipa = L.layerGroup().addTo(map);
+  let layerPelanggan = L.layerGroup().addTo(map);
+  let layerValve = L.layerGroup().addTo(map);
+
+  let dataPipa, dataPelanggan, dataValve;
+
+  function buatPopup(props, fields) {
+    let html = '<table>';
+    fields.forEach(k => {
+      if (props[k]) {
+        html += `<tr><td><b>${k}</b></td><td>: ${props[k]}</td></tr>`;
+      }
+    });
+    html += '</table>';
+    return html;
+  }
+
+  // Load data Pipa
+  fetch('data/Jaringan_Pipa_Ngawi.geojson')
+    .then(res => res.json())
+    .then(json => {
+      dataPipa = json;
+      isiFilter(json, 'Diameter', 'filterPipa');
+      tampilkanPipa();
+    });
+
+  function tampilkanPipa() {
+    layerPipa.clearLayers();
+    const val = document.getElementById('filterPipa').value;
+    const geo = val ? filterBy(dataPipa, 'Diameter', val) : dataPipa;
+    L.geoJSON(geo, {
+      style: function(feature) {
+  const d = (feature.properties?.Diameter || '').toString().replace(/[^\d]/g, '');
+  const diameter = parseInt(d);
+  if (diameter <= 50) return { color: "#3366cc", weight: 3 };        // Biru tua
+  if (diameter <= 100) return { color: "#33aa33", weight: 3 };       // Hijau
+  if (diameter <= 150) return { color: "#ff9900", weight: 3 };       // Oranye
+  if (diameter <= 200) return { color: "#cc3333", weight: 3 };       // Merah
+  if (diameter <= 300) return { color: "#9966cc", weight: 3 };       // Ungu
+  return { color: "#8B4513", weight: 3 };                             // Coklat untuk >300
+},
+      onEachFeature: (f, l) => {
+        l.bindPopup("<b>Jaringan Pipa</b><br>" + buatPopup(f.properties, ['No id Aset','Diameter','Panjang','Jenis Pipa','Kondisi','Th Pasang']));
+      }
+    }).addTo(layerPipa);
+  }
+
+  // Load data Pelanggan
+  fetch('data/Pelanggan_Ngawi.geojson')
+    .then(res => res.json())
+    .then(json => {
+      dataPelanggan = json;
+      isiFilter(json, 'Golongan', 'filterPelanggan');
+      tampilkanPelanggan();
+    });
+
+  function tampilkanPelanggan() {
+    layerPelanggan.clearLayers();
+    const val = document.getElementById('filterPelanggan').value;
+    const geo = val ? filterBy(dataPelanggan, 'Golongan', val) : dataPelanggan;
+    L.geoJSON(geo, {
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+        radius: 5, fillColor: "#28a745", color: "#006400", weight: 1, fillOpacity: 0.8
+      }),
+      onEachFeature: (f, l) => {
+        l.bindPopup("<b>Pelanggan</b><br>" + buatPopup(f.properties, ['Nama','No Sambung','Alamat','Golongan','Status']));
+        f._leaflet_id = l._leaflet_id;
+      }
+    }).addTo(layerPelanggan);
+  }
+
+  // Load data Valve
+  fetch('data/Valve.geojson')
+    .then(res => res.json())
+    .then(json => {
+      dataValve = json;
+      isiFilter(json, 'Diameter', 'filterValve');
+      tampilkanValve();
+    });
+
+  function tampilkanValve() {
+    layerValve.clearLayers();
+    const val = document.getElementById('filterValve').value;
+    const geo = val ? filterBy(dataValve, 'Diameter', val) : dataValve;
+    L.geoJSON(geo, {
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+        radius: 6, fillColor: "#ff0000", color: "#b22222", weight: 1, fillOpacity: 0.9
+      }),
+      onEachFeature: (f, l) => {
+        l.bindPopup("<b>Valve</b><br>" + buatPopup(f.properties, ['Nama','Diameter','Jenis Valv','Kondisi','Alamat','Th Pasang']));
+      }
+    }).addTo(layerValve);
+  }
+
+  function isiFilter(geojson, key, selectId) {
+    const opsi = new Set();
+    geojson.features.forEach(f => {
+      const v = f.properties[key];
+      if (v) opsi.add(v);
+    });
+    const select = document.getElementById(selectId);
+    Array.from(opsi).sort().forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.text = v;
+      select.appendChild(o);
+    });
+  }
+
+  function filterBy(geojson, key, val) {
+    return {
+      ...geojson,
+      features: geojson.features.filter(f => f.properties[key] == val)
+    };
+  }
+
+  document.getElementById('filterPipa').addEventListener('change', tampilkanPipa);
+  document.getElementById('filterPelanggan').addEventListener('change', tampilkanPelanggan);
+  document.getElementById('filterValve').addEventListener('change', tampilkanValve);
+
+  document.getElementById('chkPipa').onchange = e => e.target.checked ? map.addLayer(layerPipa) : map.removeLayer(layerPipa);
+  document.getElementById('chkPelanggan').onchange = e => e.target.checked ? map.addLayer(layerPelanggan) : map.removeLayer(layerPelanggan);
+  document.getElementById('chkValve').onchange = e => e.target.checked ? map.addLayer(layerValve) : map.removeLayer(layerValve);
+
+  setTimeout(() => {
+    L.control.layers(
+      { "OpenStreetMap": osm, "Google Satellite": googleSat },
+      { "Jaringan Pipa": layerPipa, "Pelanggan": layerPelanggan, "Valve": layerValve },
+      { collapsed: false }
+    ).addTo(map);
+  }, 1000);
+
+  // Fungsi pencarian pelanggan dengan popup muncul dan zoom ke lokasi
+  document.getElementById('searchBtn').addEventListener('click', () => {
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    if (!q) return alert("Masukkan nama atau nomor sambungan pelanggan!");
+    if (!dataPelanggan) return alert("Data pelanggan belum siap.");
+
+    let found = null;
+    for (const f of dataPelanggan.features) {
+      if (f.properties.Nama.toLowerCase().includes(q) || (f.properties['No Sambung'] && f.properties['No Sambung'].toLowerCase().includes(q))) {
+        found = f;
+        break;
+      }
+    }
+    if (found) {
+      const latlng = [found.geometry.coordinates[1], found.geometry.coordinates[0]];
+      map.setView(latlng, 17);
+      const popup = L.popup()
+        .setLatLng(latlng)
+        .setContent("<b>Pelanggan</b><br>" + buatPopup(found.properties, ['Nama','No Sambung','Alamat','Golongan','Status']))
+        .openOn(map);
+    } else {
+      alert("Data pelanggan tidak ditemukan.");
+    }
+  });
+
+</script>
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Statistik Section -->
+<div class="page" id="statistik" style="display: none; padding: 20px;">
+<h2>Statistik Jaringan</h2>
+<canvas height="400" id="statistikChart" width="600"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ctx = document.getElementById("statistikChart").getContext("2d");
+  let chart;
+
+  async function fetchGeoJSON(path) {
+    const res = await fetch(path);
+    return await res.json();
+  }
+
+  function updateChart(labels, data, type = 'bar', label = 'Jumlah Fitur') {
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: type,
+      data: {
+        labels: labels,
+        datasets: [{
+          label: label,
+          data: data,
+          backgroundColor: 'rgba(54, 162, 235, 0.6)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: label.includes("meter") ? "Meter" : ""
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: label.includes("meter") ? "Diameter Pipa (mm)" : ""
+            }
+          }
+        }
+      }
+    });
+  }
+
+  async function tampilkanStatistik(jenis) {
+    if (jenis === "pipa_diameter") {
+      const geo = await fetchGeoJSON("data/Jaringan_Pipa_Ngawi.geojson");
+      const panjang = {};
+
+      geo.features.forEach(f => {
+        let raw = f.properties?.Diameter ?? "Tidak diketahui";
+        let diameter = raw.toString().replace("mm", "").trim();
+        if (!diameter) diameter = "Tidak diketahui";
+
+        const geometry = f.geometry;
+        let total = 0;
+
+        if (geometry?.type === "MultiLineString") {
+          geometry.coordinates.forEach(line => {
+            for (let i = 1; i < line.length; i++) {
+              const [x1, y1] = line[i - 1];
+              const [x2, y2] = line[i];
+              const dx = x2 - x1;
+              const dy = y2 - y1;
+              total += Math.sqrt(dx * dx + dy * dy);
+            }
+          });
+        } else if (geometry?.type === "LineString") {
+          const coords = geometry.coordinates;
+          for (let i = 1; i < coords.length; i++) {
+            const [x1, y1] = coords[i - 1];
+            const [x2, y2] = coords[i];
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            total += Math.sqrt(dx * dx + dy * dy);
+          }
+        }
+
+        panjang[diameter] = (panjang[diameter] || 0) + total;
+      });
+
+      updateChart(Object.keys(panjang), Object.values(panjang), 'bar', 'Panjang Pipa (meter)');
+    } else if (jenis === "pelanggan_golongan") {
+      const geo = await fetchGeoJSON("data/Pelanggan_Ngawi.geojson");
+      const group = {};
+      geo.features.forEach(f => {
+        const key = f.properties?.Golongan ?? "Tidak diketahui";
+        group[key] = (group[key] || 0) + 1;
+      });
+      updateChart(Object.keys(group), Object.values(group));
+    } else if (jenis === "pelanggan_status") {
+      const geo = await fetchGeoJSON("data/Pelanggan_Ngawi.geojson");
+      let aktif = 0, nonaktif = 0;
+      geo.features.forEach(f => {
+        const status = (f.properties?.Status ?? "").toLowerCase();
+        if (status === "aktif") aktif++;
+        else nonaktif++;
+      });
+      updateChart(["Aktif", "Non-Aktif"], [aktif, nonaktif], 'doughnut');
+    } else if (jenis === "valve_jenis") {
+      const geo = await fetchGeoJSON("data/Valve.geojson");
+      const jenis = {};
+      geo.features.forEach(f => {
+        const tipe = f.properties?.Jenis ?? "Tidak diketahui";
+        jenis[tipe] = (jenis[tipe] || 0) + 1;
+      });
+      updateChart(Object.keys(jenis), Object.values(jenis), 'pie');
+    }
+  }
+
+  document.getElementById("statistikSelector").addEventListener("change", (e) => {
+    tampilkanStatistik(e.target.value);
+  });
+
+  tampilkanStatistik("pipa_diameter");
+</script>
+<link href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" rel="stylesheet"/>
+<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+
+
+<link href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" rel="stylesheet"/>
+<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+<script>
+window.onload = function () {
+  if (!window.map) {
+    window.map = L.map("map").setView([-7.415, 111.44], 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(window.map);
+  }
+
+  const map = window.map;
+  const drawnItems = new L.FeatureGroup().addTo(map);
+  let drawControl, isEditing = false;
+
+  const groupPipa = new L.FeatureGroup().addTo(map);
+  const groupPelanggan = new L.FeatureGroup().addTo(map);
+  const groupValve = new L.FeatureGroup().addTo(map);
+
+  Promise.all([
+    fetch("data/Jaringan_Pipa_Ngawi.geojson").then(r => r.json()),
+    fetch("data/Pelanggan_Ngawi.geojson").then(r => r.json()),
+    fetch("data/Valve.geojson").then(r => r.json())
+  ]).then(([pipa, pelanggan, valve]) => {
+    L.geoJSON(pipa, {
+      style: { color: "#007bff", weight: 2 }
+    }).eachLayer(layer => groupPipa.addLayer(layer));
+
+    L.geoJSON(pelanggan, {
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+        radius: 5,
+        fillColor: "#28a745",
+        fillOpacity: 1,
+        color: "#000"
+      })
+    }).eachLayer(layer => groupPelanggan.addLayer(layer));
+
+    L.geoJSON(valve, {
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+        radius: 5,
+        fillColor: "#ff0000",
+        fillOpacity: 1,
+        color: "#000"
+      })
+    }).eachLayer(layer => groupValve.addLayer(layer));
+  });
+
+  document.getElementById("toggleEdit").addEventListener("click", () => {
+    document.getElementById("editOptions").style.display = "block";
+  });
+
+  window.startEdit = function () {
+    document.getElementById("editOptions").style.display = "none";
+    drawnItems.clearLayers();
+
+    if (document.getElementById("editPipa").checked) {
+      groupPipa.eachLayer(layer => drawnItems.addLayer(layer));
+    }
+    if (document.getElementById("editPelanggan").checked) {
+      groupPelanggan.eachLayer(layer => drawnItems.addLayer(layer));
+    }
+    if (document.getElementById("editValve").checked) {
+      groupValve.eachLayer(layer => drawnItems.addLayer(layer));
+    }
+
+    if (!isEditing) {
+      drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawnItems },
+        draw: false
+      });
+      map.addControl(drawControl);
+      isEditing = true;
+    }
+  };
+
+  map.on("draw:edited", function (e) {
+    e.layers.eachLayer(function (layer) {
+      console.log("Layer diedit:", JSON.stringify(layer.toGeoJSON()));
+    });
+  });
+};
+</script>
+
+<script>
+function getUniqueUnit(data) {
+  const set = new Set();
+  data.features.forEach(f => {
+    if (f.properties?.Unit) {
+      set.add(f.properties.Unit);
+    }
+  });
+  return Array.from(set);
+}
+
+function populateUnitOptions() {
+  const select = document.getElementById("filterUnit");
+  const unitList = [...new Set([
+    ...getUniqueUnit(dataPipa),
+    ...getUniqueUnit(dataValve)
+  ])].sort();
+
+  unitList.forEach(val => {
+    const opt = document.createElement("option");
+    opt.value = val;
+    opt.textContent = val;
+    select.appendChild(opt);
+  });
+}
+
+function filterUnit() {
+  const val = document.getElementById("filterUnit").value;
+
+  // Filter Pipa
+  layerPipa.clearLayers();
+  const pipaFiltered = val ? {
+    ...dataPipa,
+    features: dataPipa.features.filter(f => f.properties?.Unit === val)
+  } : dataPipa;
+
+  L.geoJSON(pipaFiltered, {
+    style: function(feature) {
+      const d = (feature.properties?.Diameter || '').toString().replace(/[^\d]/g, '');
+      const diameter = parseInt(d);
+      if (diameter <= 50) return { color: "#3366cc", weight: 3 };
+      if (diameter <= 100) return { color: "#33aa33", weight: 3 };
+      if (diameter <= 150) return { color: "#ff9900", weight: 3 };
+      if (diameter <= 200) return { color: "#cc3333", weight: 3 };
+      if (diameter <= 300) return { color: "#9966cc", weight: 3 };
+      return { color: "#8B4513", weight: 3 };
+    },
+    onEachFeature: (f, l) => {
+      if (f && f.properties) {
+        l.bindPopup(buatPopup(f.properties, Object.keys(f.properties)));
+      }
+    }
+  }).addTo(layerPipa);
+
+  // Filter Valve
+  layerValve.clearLayers();
+  const valveFiltered = val ? {
+    ...dataValve,
+    features: dataValve.features.filter(f => f.properties?.Unit === val)
+  } : dataValve;
+
+  L.geoJSON(valveFiltered, {
+    pointToLayer: function (f, latlng) {
+      return L.circleMarker(latlng, {
+        radius: 5, fillColor: "#ff0000", color: "#aa0000", weight: 1, fillOpacity: 0.8
+      });
+    },
+    onEachFeature: (f, l) => {
+      if (f && f.properties) {
+        l.bindPopup(buatPopup(f.properties, Object.keys(f.properties)));
+      }
+    }
+  }).addTo(layerValve);
+}
+
+document.addEventListener("DOMContentLoaded", populateUnitOptions);
+</script>
+
+</body>
+</html>
